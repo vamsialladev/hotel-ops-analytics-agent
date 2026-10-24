@@ -1,0 +1,57 @@
+name: CI
+
+on: [push, pull_request]
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    name: Lint, tests, free eval gates, audit
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-python@v7
+        with:
+          python-version: "3.12"
+          cache: pip
+      - run: pip install -r requirements-dev.txt
+      - name: Lint and format check
+        run: |
+          ruff check .
+          ruff format --check .
+      - name: Tests (coverage gate 80%; the model is replaced, no API key needed)
+        run: python -m pytest -q --cov --cov-report=term-missing --cov-fail-under=80
+      - name: "Gate: every reference query passes the SQL guard"
+        run: python -m eval.run_eval --guard-only
+      - name: "Gate: the detector catches all 5 planted anomalies on both years, at most 1 false alarm a month"
+        run: python -m eval.run_anomaly_eval --gate
+      - name: "Gate: the saved dev run re-scores to the same verdicts (no API)"
+        run: python -m eval.run_eval --rescore eval/reports/sql-2026-10-24-dev.jsonl
+      - name: Dependency audit
+        run: pip-audit -r requirements.txt
+
+  links:
+    name: Link check (lychee)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: lycheeverse/lychee-action@v2
+        with:
+          args: >-
+            --no-progress --max-retries 3 --accept "200..=299,303,403,429,503,999"
+            --exclude "^https://(www\.)?linkedin\.com" --exclude "^https?://localhost"
+            README.md SECURITY.md CONTRIBUTING.md CHANGELOG.md 'docs/**/*.md'
+          fail: true
+
+  secrets:
+    name: Secret scan (gitleaks)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+      - name: gitleaks (full history)
+        run: |
+          curl -sSfL https://github.com/gitleaks/gitleaks/releases/download/v8.24.2/gitleaks_8.24.2_linux_x64.tar.gz | tar -xz gitleaks
+          ./gitleaks git --redact --verbose --exit-code 1 .

@@ -1,0 +1,25 @@
+name: Daily anomaly check
+
+# Replays today's month and day into the demo year and posts to Slack when the SLACK_WEBHOOK_URL secret is set;
+# without the secret it prints the message in the job log (dry run). No model is called.
+on:
+  schedule:
+    - cron: "23 12 * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-python@v7
+        with:
+          python-version: "3.12"
+      - run: pip install "python-dotenv~=1.2"
+      - name: Run the daily check
+        env:
+          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
+        run: python scripts/daily_check.py --post

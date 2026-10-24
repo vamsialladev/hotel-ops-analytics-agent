@@ -1,0 +1,27 @@
+[project]
+name = "hotel-ops-analytics-agent"
+version = "1.0.0"
+description = "Stage 8: plain-English questions over the hotel group's bookings database, and a daily anomaly check"
+requires-python = ">=3.12"
+license = { text = "MIT" }
+authors = [{ name = "Vamsi Alla" }]
+
+[tool.ruff]
+line-length = 120
+target-version = "py312"
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "B", "UP"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["."]
+
+[tool.coverage.run]
+source = ["src", "eval", "scripts", "app"]
+omit = ["scripts/make_captions.py"]
+
+[tool.ruff.lint.per-file-ignores]
+# Data tables: long string literals read better unwrapped.
+"scripts/make_db.py" = ["E501"]
+"src/schema.py" = ["E501"]
