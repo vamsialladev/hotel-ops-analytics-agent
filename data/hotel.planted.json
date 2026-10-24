@@ -1,0 +1,32 @@
+[
+  {
+    "kind": "occupancy_drop",
+    "property": "mountain-lodge",
+    "start": "2026-03-09",
+    "end": "2026-03-15"
+  },
+  {
+    "kind": "cancellation_spike",
+    "property": "beach-resort",
+    "start": "2026-06-08",
+    "end": "2026-06-14"
+  },
+  {
+    "kind": "refund_spike",
+    "property": "mountain-lodge",
+    "start": "2026-08-17",
+    "end": "2026-08-20"
+  },
+  {
+    "kind": "activity_no_shows",
+    "property": "beach-resort",
+    "start": "2026-01-19",
+    "end": "2026-01-25"
+  },
+  {
+    "kind": "rate_error",
+    "property": "beach-resort",
+    "start": "2026-09-14",
+    "end": "2026-09-18"
+  }
+]
