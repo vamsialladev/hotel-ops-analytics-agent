@@ -11,6 +11,7 @@ test:
 
 gates:
 	python -m eval.run_eval --guard-only
+	python -m eval.run_eval --retrieval
 	python -m eval.run_anomaly_eval --gate
 
 app:
