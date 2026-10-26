@@ -12,8 +12,9 @@ from pathlib import Path
 
 import anthropic
 import streamlit as st
+from hotelplatform import admin_gate, bots, jsonlog
 
-from src import agent, anomaly, db, limits, requestlog, share, suggest
+from src import agent, anomaly, db, limits, ops, requestlog, share, suggest
 from src.config import DB_PATH, DEMO_VIDEO_URL, PORTFOLIO_URL, REPO_URL, ROOT
 
 st.set_page_config(page_title="Hotel Ops Analytics", page_icon="📊", layout="wide")
@@ -124,11 +125,27 @@ def turn_from(res: agent.Result) -> dict:
 
 
 def answer(question: str, role: str):
+    """One question = one trace (hotel-ai-platform): input check, then every agent step, then the output check."""
+    with ops.start(state().session_id) as trace:
+        _answer(question, role, trace)
+
+
+def _answer(question: str, role: str, trace):
     s = state()
     reason = limits.blocked(s.times, s.asked, time.time())
     if reason:
         st.info(reason, icon=":material/hourglass:")
+        ops.finish(trace, None, role, status="capped", error_type="limit")
         return
+    verdict = ops.check_question(question)  # injection, DROP TABLE, data requests: before any model call
+    if not verdict.allowed:
+        with st.chat_message("user"):
+            st.markdown(question)
+        with st.chat_message("assistant"):
+            st.markdown(verdict.message)
+        ops.finish(trace, None, role, status="blocked", error_type=verdict.reason)
+        return
+    question = verdict.text  # contact details replaced, planted sentences cut out
     s.asked += 1
     s.times = [t for t in s.times if time.time() - t < 60] + [time.time()]
     history = [
@@ -148,12 +165,24 @@ def answer(question: str, role: str):
                 status.update(label=f"Done: {len(res.steps)} steps", state="complete")
             if res.action == "sql":
                 st.write_stream(agent.stream_answer(res))
-        except (anthropic.APIConnectionError, anthropic.APITimeoutError, anthropic.APIStatusError):
-            st.error(FRIENDLY_ERROR, icon=":material/cloud_off:")
+        except (anthropic.APIConnectionError, anthropic.APITimeoutError, anthropic.APIStatusError) as exc:
+            st.error(f"{FRIENDLY_ERROR} Reference: {trace.reference}", icon=":material/cloud_off:")
+            jsonlog.exception(exc, trace_id=trace.trace_id, where="answer")
+            timeout = isinstance(exc, anthropic.APITimeoutError)
+            ops.finish(trace, None, role, status="timeout" if timeout else "error", error_type=type(exc).__name__)
             return
-        except Exception:  # noqa: BLE001 - never show a trace to a visitor
-            st.error("Something went wrong on my side. Please try a different question.", icon=":material/error:")
+        except Exception as exc:  # noqa: BLE001 - never show a stack trace to a visitor
+            st.error(
+                f"Something went wrong on my side. Please try a different question. Reference: {trace.reference}",
+                icon=":material/error:",
+            )
+            jsonlog.exception(exc, trace_id=trace.trace_id, where="answer")
+            ops.finish(trace, None, role, status="error", error_type=type(exc).__name__)
             return
+    if res.answer:
+        checked = ops.check_answer(res.answer, res.rows, question)
+        res.answer = checked.text  # contact details the rows didn't contain, or a prompt leak, replaced
+    ops.finish(trace, res, role)
     if res.action == "clarify":
         s.clarify_for = res.question
     limits.record(res.usage)
@@ -293,20 +322,48 @@ def sidebar() -> str:
         st.link_button("About this project (GitHub)", REPO_URL, icon=":material/code:")
         st.link_button("Portfolio", PORTFOLIO_URL, icon=":material/person:")
         st.caption("Stage 8 of a simulated client engagement. Synthetic data, no real guests.")
+        st.caption(
+            "Privacy: questions, answers and each step's trace are logged to improve the service, with personal "
+            "details removed first, and deleted after 30 days."
+        )
     return role
 
 
-token = st.query_params.get("share")
-if token:
-    shared_page(token)
+@st.cache_resource(show_spinner=False)
+def startup_log() -> bool:
+    """Once per server start: the JSON lines every hotel app writes (version, settings set/missing, dependencies)."""
+    ops.configure_logs()
+    jsonlog.app_start(app_version=ops.APP_VERSION)
+    jsonlog.config_loaded(["ANTHROPIC_API_KEY", "ADMIN_PASSWORD", "DATABASE_URL", "SLACK_WEBHOOK_URL"],
+                          model=ops.LLM_MODEL)  # fmt: skip
+    jsonlog.dependency_health(ops.dependencies())
+    return True
+
+
+def main_page():
+    token = st.query_params.get("share")
+    if token:
+        shared_page(token)
+        st.stop()
+    st.title("📊 Hotel Ops Analytics")
+    st.caption("Stage 8 of a simulated client engagement · synthetic data · every answer shows its SQL")
+    demo_role = sidebar()
+    ask_tab, anomaly_tab, how_tab = st.tabs(["Ask", "Daily anomalies", "How it works"])
+    with ask_tab:
+        ask_page(demo_role)
+    with anomaly_tab:
+        anomalies_page()
+    with how_tab:
+        how_page()
+
+
+if bots.is_bot(st.query_params):  # streamlit-keep-awake: the page loads; no model call, no log row
+    st.caption("Awake.")
     st.stop()
-st.title("📊 Hotel Ops Analytics")
-st.caption("Stage 8 of a simulated client engagement · synthetic data · every answer shows its SQL")
-demo_role = sidebar()
-ask_tab, anomaly_tab, how_tab = st.tabs(["Ask", "Daily anomalies", "How it works"])
-with ask_tab:
-    ask_page(demo_role)
-with anomaly_tab:
-    anomalies_page()
-with how_tab:
-    how_page()
+startup_log()
+pages = [st.Page(main_page, title="Analytics", icon=":material/query_stats:", default=True)]
+if admin_gate.enabled():  # no Admin page at all without ADMIN_PASSWORD; out of the menu until signed in
+    gate = st.session_state.get("_gate_admin")
+    pages.append(st.Page("views/admin.py", title="Admin", icon=":material/admin_panel_settings:", url_path="admin",
+                         visibility="visible" if gate and gate.unlocked else "hidden"))  # fmt: skip
+st.navigation(pages, position="hidden" if len(pages) == 1 else "sidebar").run()
