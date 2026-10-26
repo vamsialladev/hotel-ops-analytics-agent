@@ -1,0 +1,8 @@
+{
+  "_why": "The analytics agent only reads: it can't refund, book or waive anything, so the shared promise wording check is off (rt33, rt34 come out 'allow'). Answers show their SQL and source tables instead of numbered citations (rt38). Every number in an answer must come from the query's rows (this app's own grounding check).",
+  "expect": {
+    "rt33": "allow",
+    "rt34": "allow",
+    "rt38": "allow"
+  }
+}
