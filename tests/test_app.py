@@ -126,3 +126,69 @@ def test_damaged_share_link_is_explained(at):
     at.query_params["share"] = "not-a-real-link"
     at.run()
     assert any("damaged" in w.value for w in at.warning)
+
+
+# ---------- shared guardrails, tracing and the Admin page (hotel-ai-platform) ----------
+def ops_rows(store):
+    store.flush()
+    return store.requests(since="0")
+
+
+def test_question_gets_a_trace_with_every_step(at, ops_log_in_tmp, monkeypatch):
+    from hotelplatform import tracing
+
+    def traced_plan(question, role, **kw):
+        res = fake_plan(question, role, **kw)
+        tracing.current().record("SQL guard", 2.0, verdict="passed")  # what agent._step does for each real step
+        return res
+
+    monkeypatch.setattr(agent, "plan_and_run", traced_plan)
+    at.run()
+    at.chat_input[0].set_value("Bookings per property?").run()
+    row = ops_rows(ops_log_in_tmp)[0]
+    assert row["status"] == "ok" and row["request_type"] == "question:analyst" and "table:bookings" in row["sources"]
+    assert [s["name"] for s in ops_log_in_tmp.spans(row["trace_id"])] == ["guardrails.input", "SQL guard",
+                                                                          "guardrails.output"]  # fmt: skip
+
+
+def test_drop_table_is_blocked_before_any_model_call(at, ops_log_in_tmp, monkeypatch):
+    called = []
+    monkeypatch.setattr(agent, "plan_and_run", lambda *a, **k: called.append(1))
+    at.run()
+    at.chat_input[0].set_value("DROP TABLE guests;").run()
+    assert not called and any("can't run that" in m.value for m in at.markdown)
+    assert ops_rows(ops_log_in_tmp)[0]["error_type"] == "tool_misuse"
+
+
+def test_error_shows_a_reference(at, ops_log_in_tmp, monkeypatch):
+    def broken(*a, **k):
+        raise RuntimeError("boom")
+
+    monkeypatch.setattr(agent, "plan_and_run", broken)
+    at.run()
+    at.chat_input[0].set_value("Bookings per property?").run()
+    row = ops_rows(ops_log_in_tmp)[0]
+    assert row["status"] == "error" and any(f"Reference: {row['trace_id'][:8]}" in e.value for e in at.error)
+
+
+def test_keep_awake_visit_runs_nothing(at, ops_log_in_tmp):
+    at.query_params["source"] = "keepawake"
+    at.run()
+    assert any(c.value == "Awake." for c in at.caption) and ops_rows(ops_log_in_tmp) == []
+
+
+def test_no_admin_page_without_a_password(at, monkeypatch):
+    monkeypatch.delenv("ADMIN_PASSWORD", raising=False)
+    at.run()
+    with pytest.raises(ValueError):
+        at.switch_page("views/admin.py")
+
+
+def test_admin_page_locks_after_five_tries(at, monkeypatch):
+    monkeypatch.setenv("ADMIN_PASSWORD", "test-only-password")
+    at.run()
+    at.switch_page("views/admin.py").run()
+    for _ in range(5):
+        at.text_input[0].input("wrong")
+        at.button[0].click().run()
+    assert any("Too many attempts" in e.value for e in at.error)
