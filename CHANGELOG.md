@@ -3,6 +3,15 @@
 Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); versions follow
 [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+
+## [1.2.0] - 2026-10-25
+### Added
+- Shared guardrails, tracing and ops log from [hotel-ai-platform](https://github.com/vamsialladev/hotel-ai-platform)
+  v0.1.3 (decision 12): input check before any model call, output check against the query's rows, every agent step a
+  span, "Reference: ..." on errors, hidden Admin page (`ADMIN_PASSWORD`, shared lockout), JSON startup logs, privacy
+  note, `?source=keepawake` runs nothing.
+- Red-team suite in CI (`scripts/run_redteam.py`, docs/RED_TEAM.md) and a CycloneDX SBOM artifact.
+
 ## [1.1.0] - 2026-10-24
 
 ### Added
