@@ -40,7 +40,10 @@ def policy_ok(case: dict, cites: list[str], answer: str) -> bool:
         return True
     ok = any(re.search(case["policy"], c) for c in cites)
     if case["expect"] == "sql":
-        ok = ok and "[Hotel policy" in answer and all(re.search(x, answer, re.I) for x in case.get("answer_must", []))
+        # It cites a passage it was given, with or without the "Hotel policy: " prefix the agent adds to labels
+        # (changed after the first run, where 4 correct citations dropped the prefix).
+        cited = any(f"[{c}]" in answer or f"[{c.removeprefix('Hotel policy: ')}]" in answer for c in cites)
+        ok = ok and cited and all(re.search(x, answer, re.I) for x in case.get("answer_must", []))
     return ok
 
 
