@@ -192,3 +192,18 @@ def test_admin_page_locks_after_five_tries(at, monkeypatch):
         at.text_input[0].input("wrong")
         at.button[0].click().run()
     assert any("Too many attempts" in e.value for e in at.error)
+
+
+def test_policy_passages_from_mcp_are_shown_as_written(at, monkeypatch):
+    def with_policy(question, role, context="", history=None, con=None, client=None):
+        res = fake_plan(question, role, context, history, con, client)
+        res.policy = [{"cite_as": "Hotel policy: Beach Resort - Property Policies > Pets", "property": "beach-resort",
+                       "text": "Dogs are welcome up to 40 lbs. Pet fee is $75 per stay."}]  # fmt: skip
+        return res
+
+    monkeypatch.setattr(agent, "plan_and_run", with_policy)
+    at.run()
+    at.chat_input[0].set_value("Bookings at Beach Resort, and what is the pet policy?").run()
+    assert not at.exception
+    assert any(e.label == "Hotel policy (1 passage, via MCP)" for e in at.expander)
+    assert any("Pet fee is $75 per stay." in t.value for t in at.text)
