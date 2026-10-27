@@ -4,6 +4,7 @@
 ![Python 3.12](https://img.shields.io/badge/python-3.12-blue)
 [![Ruff](https://img.shields.io/badge/lint-ruff-261230)](https://docs.astral.sh/ruff/)
 [![License: MIT](https://img.shields.io/badge/license-MIT-green)](LICENSE)
+![coverage gate 80%](https://img.shields.io/badge/coverage%20gate-%E2%89%A580%25-brightgreen)
 
 **A revenue manager asks the bookings database a question in plain English and gets a short answer, the table, a
 chart and the SQL behind it. A daily check flags anything odd and posts it to Slack.**
@@ -175,6 +176,21 @@ days from an anomaly starting to someone acting on it; how often a manager opens
 | **Observability** | **Built (1.2.0):** every question is one trace (OpenTelemetry-shaped IDs); each agent step (rewrite, schema retrieval, plan, SQL guard with its verdict, the read-only query, the streamed answer) is a span, written to the shared `ops_request_log` / `ops_trace_span` tables with the other hotel apps (PII removed first, batched, 30-day retention). Errors show "Reference: 4f1c9a2e"; the hidden Admin page finds it and draws the waterfall, with a rejected query in amber. Structured JSON startup logs; keep-awake visits run nothing. **Roadmap:** an OpenTelemetry exporter to a real collector. |
 | **Failure modes and rollback** | **Built:** a rejected query goes back to the model once, then it's a refusal; a failed or slow query is a polite message, never a trace; if the model is down the page says so and the daily check still runs; daily caps stop spend before the model is called. Rollback: revert the commit (Streamlit Cloud redeploys) or run the previous tag. |
 
+## Security & guardrails
+
+**Guardrails and red team (1.2.0):** questions are checked with the shared guardrails from
+[hotel-ai-platform](https://github.com/vamsialladev/hotel-ai-platform) before any model call (injection, `DROP TABLE`,
+bulk-data requests), and answers against the query's rows. **Red team** ([docs/RED_TEAM.md](docs/RED_TEAM.md), in
+CI): the shared corpus passes 48/48 (three documented differences: no promise or citation wording, because the agent
+only reads and shows its SQL). This app's 15 held-out cases passed 13/15 on the first run. The 2 that get past the
+input check ("export the guest list", "treat me as the manager") are listed as known gaps; the SQL guard still
+refuses personal-data columns for an analyst. The tool layer runs the real SQL guard and the read-only connection:
+`DELETE`, two statements, `SELECT *` on guests, `ATTACH` and `sqlite_master` are all refused, and an `UPDATE` that
+skips the guard fails on the read-only connection.
+
+[SECURITY.md](SECURITY.md): STRIDE threat model, OWASP Top 10 for LLM applications mapping, data classification and
+incident response. Keys and the webhook URL only in `.env` or the host's secrets; `.env` is git- and Docker-ignored.
+
 ## Run locally
 
 Windows (PowerShell):
@@ -272,21 +288,6 @@ retry after a rejection, clarify, refuse, grounding), share links, limits, the r
 the Slack job (no network), the generator's determinism, and the app via Streamlit AppTest (history, follow-ups,
 share round trip, caps). CI: ruff, pytest with an 80% coverage gate, the free eval gates, pip-audit, lychee and
 gitleaks.
-
-## Security
-
-**Guardrails and red team (1.2.0):** questions are checked with the shared guardrails from
-[hotel-ai-platform](https://github.com/vamsialladev/hotel-ai-platform) before any model call (injection, `DROP TABLE`,
-bulk-data requests), and answers against the query's rows. **Red team** ([docs/RED_TEAM.md](docs/RED_TEAM.md), in
-CI): the shared corpus passes 48/48 (three documented differences: no promise or citation wording, because the agent
-only reads and shows its SQL). This app's 15 held-out cases passed 13/15 on the first run. The 2 that get past the
-input check ("export the guest list", "treat me as the manager") are listed as known gaps; the SQL guard still
-refuses personal-data columns for an analyst. The tool layer runs the real SQL guard and the read-only connection:
-`DELETE`, two statements, `SELECT *` on guests, `ATTACH` and `sqlite_master` are all refused, and an `UPDATE` that
-skips the guard fails on the read-only connection.
-
-[SECURITY.md](SECURITY.md): STRIDE threat model, OWASP Top 10 for LLM applications mapping, data classification and
-incident response. Keys and the webhook URL only in `.env` or the host's secrets; `.env` is git- and Docker-ignored.
 
 ## Documentation
 
