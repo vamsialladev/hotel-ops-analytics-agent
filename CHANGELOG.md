@@ -4,6 +4,13 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); versions follo
 [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 
+## [Unreleased]
+### Fixed
+- Dollar amounts rendered as LaTeX on the live app: two `$` in one answer ("with $768,880. Lodge Queen was second at
+  $647,773") lost both signs and showed the words between them as math; the daily alert lost "$50" and "$515". Every
+  answer, question, message and alert now goes through `src/display.py` (`$` and HTML escaped, same rule as stage 1);
+  report files get `$` escaped only. Found while recording the stage 8 demo on the live app.
+
 ## [1.3.0] - 2026-10-26
 ### Added
 - Hotel policy over MCP (`src/policy_mcp.py`, decision 13): a deterministic router, `search_policy` on the stage 7

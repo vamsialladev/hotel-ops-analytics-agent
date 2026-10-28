@@ -14,7 +14,7 @@ import anthropic
 import streamlit as st
 from hotelplatform import admin_gate, bots, jsonlog
 
-from src import agent, anomaly, db, limits, ops, requestlog, share, suggest
+from src import agent, anomaly, db, display, limits, ops, requestlog, share, suggest
 from src.config import DB_PATH, DEMO_VIDEO_URL, PORTFOLIO_URL, REPO_URL, ROOT
 
 st.set_page_config(page_title="Hotel Ops Analytics", page_icon="📊", layout="wide")
@@ -70,20 +70,21 @@ def show_steps(steps: list):
 
 def show_turn(turn: dict, live: bool = False):
     with st.chat_message("user"):
-        st.markdown(turn["question"])
+        st.markdown(display.safe_markdown(turn["question"]))
         if turn.get("understood_as") and turn["understood_as"] != turn["question"]:
-            st.caption(f"Understood as: {turn['understood_as']}")
+            st.caption(f"Understood as: {display.safe_markdown(turn['understood_as'])}")
     with st.chat_message("assistant"):
         action = turn["action"]
         if action == "clarify":
-            st.info(turn["message"], icon=":material/help:")
+            st.info(display.safe_markdown(turn["message"]), icon=":material/help:")
         elif action in ("refuse", "error"):
-            st.warning(turn["message"], icon=":material/block:")
+            st.warning(display.safe_markdown(turn["message"]), icon=":material/block:")
         elif not live:
-            st.markdown(turn["answer"])
+            st.markdown(display.safe_markdown(turn["answer"]))
         if action == "sql":
             if turn.get("ungrounded"):
-                st.caption(f"Check before quoting: {', '.join(turn['ungrounded'])} isn't in the query result.")
+                ungrounded = display.safe_markdown(", ".join(turn["ungrounded"]))
+                st.caption(f"Check before quoting: {ungrounded} isn't in the query result.")
             st.caption(
                 "Sources: tables "
                 + ", ".join(f"`{t}`" for t in turn["tables"])
@@ -146,9 +147,9 @@ def _answer(question: str, role: str, trace):
     verdict = ops.check_question(question)  # injection, DROP TABLE, data requests: before any model call
     if not verdict.allowed:
         with st.chat_message("user"):
-            st.markdown(question)
+            st.markdown(display.safe_markdown(question))
         with st.chat_message("assistant"):
-            st.markdown(verdict.message)
+            st.markdown(display.safe_markdown(verdict.message))
         ops.finish(trace, None, role, status="blocked", error_type=verdict.reason)
         return
     question = verdict.text  # contact details replaced, planted sentences cut out
@@ -159,7 +160,7 @@ def _answer(question: str, role: str, trace):
         for t in current_turns()
     ]
     with st.chat_message("user"):
-        st.markdown(question)
+        st.markdown(display.safe_markdown(question))
     with st.chat_message("assistant"):
         try:
             with st.status("Working on it...", expanded=False) as status:
@@ -170,7 +171,7 @@ def _answer(question: str, role: str, trace):
                     status.write(f"✓ {step.name}")
                 status.update(label=f"Done: {len(res.steps)} steps", state="complete")
             if res.action == "sql":
-                st.write_stream(agent.stream_answer(res))
+                st.write_stream(display.safe_markdown(chunk) for chunk in agent.stream_answer(res))
         except (anthropic.APIConnectionError, anthropic.APITimeoutError, anthropic.APIStatusError) as exc:
             st.error(f"{FRIENDLY_ERROR} Reference: {trace.reference}", icon=":material/cloud_off:")
             jsonlog.exception(exc, trace_id=trace.trace_id, where="answer")
@@ -234,7 +235,7 @@ def ask_page(role: str):
     for turn in turns:
         show_turn(turn)
     if s.get("clarify_for"):
-        st.caption(f"Answering the clarifying question for: “{s.clarify_for}”")
+        st.caption(f"Answering the clarifying question for: “{display.safe_markdown(s.clarify_for)}”")
     picked = None
     options = (
         EXAMPLES
@@ -265,7 +266,7 @@ def anomalies_page():
     if not findings:
         st.success(f"No anomalies on {day.isoformat()}.", icon=":material/check_circle:")
     for f in findings:
-        st.warning(f"**{f.kind.replace('_', ' ')}**: {f.message}", icon=":material/warning:")
+        st.warning(f"**{f.kind.replace('_', ' ')}**: {display.safe_markdown(f.message)}", icon=":material/warning:")
         if f.series:
             st.line_chart({"last 14 days": f.series})
         st.code(f.sql.strip(), language="sql")
@@ -285,7 +286,7 @@ def how_page():
     reports = sorted(REPORTS.glob("*.md"), reverse=True)
     for i, path in enumerate(reports):
         with st.expander(path.name, expanded=i == 0):
-            st.markdown(path.read_text(encoding="utf-8"))
+            st.markdown(display.escape_dollars(path.read_text(encoding="utf-8")))
 
 
 def shared_page(token: str):
