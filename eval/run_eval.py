@@ -4,6 +4,7 @@ refused (writes, schema changes, personal data for a non-manager, injection in t
 python -m eval.run_eval --runs 3 --price-in 0.1 --price-out 0.5            # dev set, saves a report
 python -m eval.run_eval --split heldout --runs 3 --price-in 0.1 --price-out 0.5
 python -m eval.run_eval --guard-only                                      # free: every reference SQL passes the guard
+python -m eval.run_eval --retrieval                                       # free: retrieved docs cover reference tables
 
 Every run calls the model (Claude Haiku 5.5) for each question; prices are flags, never hard-coded.
 """
@@ -14,7 +15,10 @@ import sys
 from datetime import date
 from pathlib import Path
 
-from src import agent, db, sqlguard
+import sqlglot
+from sqlglot import exp
+
+from src import agent, db, retrieval, sqlguard
 from src.compare import matches
 from src.config import LLM_MODEL
 
@@ -135,6 +139,28 @@ def rescore(path: Path) -> int:
     return 1 if changed else 0  # CI: the grader and the saved run must agree
 
 
+def retrieval_check() -> int:
+    """For every answerable question, the retrieved table docs must include every table the reference SQL reads.
+    Follow-ups are checked on their standalone meaning (the reference is written for it), using the last history
+    question plus the message, which is what the retriever sees when the rewrite only adds the earlier context."""
+    misses, n, sizes = [], 0, []
+    for case in load("all"):
+        if case["expect"] != "sql":
+            continue
+        n += 1
+        query = " ".join([h["question"] for h in case.get("history", [])[-1:]] + [case["question"]])
+        hits = retrieval.search(query)
+        sizes.append(len(hits))
+        need = {t.name for t in sqlglot.parse_one(case["sql"], read="sqlite").find_all(exp.Table)}
+        got = {d.tables[0] for d, _ in hits if d.id.startswith("table:")}
+        if not need <= got:
+            misses.append(f"{case['id']}: missing {sorted(need - got)}")
+    print("\n".join(misses) or "every reference table is retrieved")
+    docs = len(retrieval.documents())
+    print(f"table recall {n - len(misses)}/{n}; {sum(sizes) / len(sizes):.1f} of {docs} docs per question")
+    return 1 if misses else 0
+
+
 def guard_only() -> int:
     bad = []
     for case in load("all"):
@@ -154,11 +180,15 @@ def main(argv=None) -> int:
     parser.add_argument("--price-in", type=float, default=None)
     parser.add_argument("--price-out", type=float, default=None)
     parser.add_argument("--guard-only", action="store_true")
+    parser.add_argument("--retrieval", action="store_true", help="free check: retrieved docs cover reference tables")
     parser.add_argument("--rescore", type=Path, help="re-grade a saved .jsonl run (no model calls)")
     parser.add_argument("--no-report", action="store_true")
+    parser.add_argument("--tag", default="", help="added to the report name, e.g. v1.1 (keeps earlier reports)")
     args = parser.parse_args(argv)
     if args.guard_only:
         return guard_only()
+    if args.retrieval:
+        return retrieval_check()
     if args.rescore:
         return rescore(args.rescore)
     con, client = db.connect(), agent.make_client()
@@ -166,7 +196,9 @@ def main(argv=None) -> int:
     for run in range(args.runs):
         out = []
         for case in load(args.split):
-            res = agent.ask(case["question"], case.get("role", "analyst"), con=con, client=client)
+            res = agent.ask(
+                case["question"], case.get("role", "analyst"), history=case.get("history"), con=con, client=client
+            )
             ok = grade(case, res, con)
             out.append(
                 {
@@ -176,6 +208,9 @@ def main(argv=None) -> int:
                     "pass": ok,
                     "action": res.action,
                     "sql": res.sql,
+                    "understood_as": res.question if res.original else "",
+                    "tables": res.tables,
+                    "docs": res.docs,
                     "answer": res.answer,
                     "message": res.message,
                     "rejected": res.rejected,
@@ -194,9 +229,9 @@ def main(argv=None) -> int:
     print(text)
     if not args.no_report:
         REPORTS.mkdir(exist_ok=True)
-        stem = REPORTS / f"sql-{date.today().isoformat()}-{args.split}"
-        stem.with_suffix(".md").write_text(text, encoding="utf-8")
-        stem.with_suffix(".jsonl").write_text("\n".join(json.dumps(r) for r in raw) + "\n", encoding="utf-8")
+        stem = REPORTS / f"sql-{date.today().isoformat()}-{args.split}{'-' + args.tag if args.tag else ''}"
+        Path(f"{stem}.md").write_text(text, encoding="utf-8")
+        Path(f"{stem}.jsonl").write_text("\n".join(json.dumps(r) for r in raw) + "\n", encoding="utf-8")
     return 0
 
 

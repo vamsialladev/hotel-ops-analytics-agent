@@ -24,10 +24,12 @@ jobs:
         run: python -m pytest -q --cov --cov-report=term-missing --cov-fail-under=80
       - name: "Gate: every reference query passes the SQL guard"
         run: python -m eval.run_eval --guard-only
+      - name: "Gate: schema retrieval finds every table each reference query reads"
+        run: python -m eval.run_eval --retrieval
       - name: "Gate: the detector catches all 5 planted anomalies on both years, at most 1 false alarm a month"
         run: python -m eval.run_anomaly_eval --gate
       - name: "Gate: the saved dev run re-scores to the same verdicts (no API)"
-        run: python -m eval.run_eval --rescore eval/reports/sql-2026-10-24-dev.jsonl
+        run: python -m eval.run_eval --rescore eval/reports/sql-2026-10-24-dev-v1.1.jsonl
       - name: Dependency audit
         run: pip-audit -r requirements.txt
 

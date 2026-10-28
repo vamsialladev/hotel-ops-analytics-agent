@@ -19,20 +19,84 @@ TABLES = {
     "'billing error' | 'service')",
     "feedback": "id, booking_id, date, score (1-5), comment",
 }
+# How a table reaches the property or the activity it belongs to: retrieving a table brings these with it.
+JOINS = {
+    "rooms": ("properties",),
+    "bookings": ("properties",),
+    "refunds": ("bookings",),
+    "feedback": ("bookings",),
+    "activity_bookings": ("activities",),
+    "activities": ("activity_bookings",),
+}
 PII_COLUMNS = {"full_name", "email", "phone"}  # all in `guests`; only the manager role may select them
 
-DEFINITIONS = f"""Definitions (use exactly these):
-- Today is {TODAY}. "Last month" = October 2026. "This year" = 2026. Q1 = January-March.
-- Revenue = SUM(bookings.total_usd) over bookings with status != 'cancelled', by check_in date.
-- "Bookings" means every booking, cancelled ones included, unless the question says otherwise.
-- Check-ins = bookings with status != 'cancelled', counted by check_in date.
-- Room-nights sold = SUM(bookings.nights) over bookings with status != 'cancelled', by check_in date.
-- ADR (average daily rate) = revenue / room-nights sold.
-- Occupancy on a date = non-cancelled bookings with check_in <= date AND check_out > date, divided by
-  properties.rooms_count.
-- Cancellation rate = cancelled bookings / all bookings, by check_in date.
-- No-show rate = no_show / (attended + no_show) in activity_bookings.
-- Dates are TEXT 'YYYY-MM-DD'; use strftime / BETWEEN on them (SQLite)."""
+DEFINITION_DOCS = [
+    {
+        "id": "dates",
+        "title": "Dates and periods",
+        "text": f'Today is {TODAY}. "Last month" = October 2026. "This year" = 2026. Q1 = January-March. Dates '
+        "are TEXT 'YYYY-MM-DD'; use strftime / BETWEEN on them (SQLite). No time frame in the question means no "
+        "date filter at all.",
+        "tables": [],
+    },
+    {
+        "id": "revenue",
+        "title": "Revenue",
+        "text": "Revenue = SUM(bookings.total_usd) over bookings with status != 'cancelled', by check_in date.",
+        "tables": ["bookings"],
+    },
+    {
+        "id": "bookings",
+        "title": "Bookings",
+        "text": '"Bookings" means every booking, cancelled ones included, unless the question says otherwise.',
+        "tables": ["bookings"],
+    },
+    {
+        "id": "check_ins",
+        "title": "Check-ins",
+        "text": "Check-ins = bookings with status != 'cancelled', counted by check_in date.",
+        "tables": ["bookings"],
+    },
+    {
+        "id": "room_nights",
+        "title": "Room-nights sold",
+        "text": "Room-nights sold = SUM(bookings.nights) over bookings with status != 'cancelled', by check_in date.",
+        "tables": ["bookings"],
+    },
+    {
+        "id": "adr",
+        "title": "ADR (average daily rate)",
+        "text": "ADR (average daily rate) = revenue / room-nights sold.",
+        "tables": ["bookings"],
+    },
+    {
+        "id": "occupancy",
+        "title": "Occupancy",
+        "text": "Occupancy on a date = non-cancelled bookings with check_in <= date AND check_out > date, divided by "
+        "properties.rooms_count.",
+        "tables": ["bookings", "properties"],
+    },
+    {
+        "id": "cancellation_rate",
+        "title": "Cancellation rate",
+        "text": "Cancellation rate = cancelled bookings / all bookings, by check_in date.",
+        "tables": ["bookings"],
+    },
+    {
+        "id": "no_show_rate",
+        "title": "Activity no-show rate",
+        "text": "No-show rate = no_show / (attended + no_show) in activity_bookings.",
+        "tables": ["activity_bookings", "activities"],
+    },
+    {
+        "id": "loaded_rate",
+        "title": "Loaded nightly rate",
+        "text": "The nightly rate loaded for a room type on a date is rates.rate_usd; it is not what a guest paid "
+        "(that is bookings.total_usd).",
+        "tables": ["rates"],
+    },
+]
+DEFINITIONS = "Definitions (use exactly these):\n" + "\n".join(f"- {d['text']}" for d in DEFINITION_DOCS)
 
 
 def schema_text() -> str:

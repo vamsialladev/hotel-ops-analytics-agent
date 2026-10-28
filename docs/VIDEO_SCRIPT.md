@@ -1,36 +1,36 @@
 # Video script: Hotel Ops Analytics Agent (about 85 seconds)
 
-I record this myself, in my own voice, over a screen recording of the app. No AI voice. Setup and tips:
-`RECORDING_GUIDE.md` in my portfolio folder. Read it twice, then talk from the bullets. `/` marks a natural pause.
+How I talk in this one: like I'm showing it to someone on a call. Short sentences, contractions, a pause where
+there's a `/`. Talk from the bullets, not word for word. One take with a small stumble is fine.
 
-Before recording: `streamlit run app.py` (or the live app once it's deployed and awake), browser zoom 125%, role
-"analyst" in the sidebar.
+Before recording: the live app (or `streamlit run app.py`), awake, browser zoom 125%, role "analyst" in the
+sidebar, a new conversation.
 
 ## Shot list
 
 | Time | On screen | What I say |
 |---|---|---|
-| 0–10 s | The Ask tab | A revenue manager told me a custom question takes half a day of pivot tables. / So this lets them just ask. Simulated hotel group, made-up data. |
-| 10–30 s | Type input 1. The answer, table, chart and SQL appear | I ask which room type earned the most at Mountain Lodge this year. / It writes the SQL, / a guard checks it's read-only, / and I get the answer, the table, a chart. / And the SQL, every time. |
-| 30–45 s | Type input 2, then the follow-up input 3 | Now something vague: what was our occupancy? / It doesn't guess. It asks which property and which date. / I answer, and it works it out. |
-| 45–60 s | Type input 4 | Then I try to get guest phone numbers as an analyst. / It refuses, / and even if the model slipped, the guard and a read-only connection would stop it. |
-| 60–75 s | Daily anomalies tab on 2026-09-14, then the Slack message in the terminal | Every morning a check runs five rules. / Here a suite was priced at fifty dollars instead of five hundred. / That goes to Slack with a small chart and the SQL. / It caught all five planted problems, with one false alarm in eleven months. |
-| 75–85 s | New tab: the live app URL loads (or the GitHub repo if not deployed yet) | Ninety-eight percent on the test questions, about thirty cents per thousand questions. / The link's below. |
+| 0–10 s | The Ask tab, empty | A revenue manager told me a custom question costs her half a day of pivot tables. / So I built this: she just asks. / It's a simulated hotel group, and all the data's made up. |
+| 10–30 s | Type input 1. The status shows the steps, the answer streams. Open "Steps", then the "SQL guard" step | Which room type earned the most at Mountain Lodge this year? / It writes one SQL query, / and before anything runs, a guard checks it. / Here's the guard's verdict: passed, read-only, these tables. / Then it runs, and I get the answer. |
+| 30–45 s | Point at the "Sources" line, then open "SQL and result" | And here's where it came from. / The tables it read, and the revenue definition the hotel agreed on. / It didn't guess what revenue means. It looked it up. / And the SQL's right there if she wants to check. |
+| 45–60 s | Type input 2. "Understood as" appears under it | Now a follow-up. / And at Beach Resort? / It works out I mean the same question for the other property, / shows me how it read it, and answers. |
+| 60–75 s | Type input 3 (refused). Then the Daily anomalies tab on 2026-09-14 | If I ask for guest phone numbers as an analyst, it says no, / and even if the model slipped, the guard would stop it. / And every morning a check runs five rules. Here it caught a suite priced at fifty dollars instead of five hundred. / On my test questions it's ninety-nine percent right, for about thirty cents per thousand questions. |
+| 75–85 s | New tab: the live URL loading | That's it. / It's live, the link's below, and so is the code. |
 
 ## Exact inputs
 
 | # | Role | Type exactly |
 |---|---|---|
 | 1 | analyst | `Which room type at Mountain Lodge earned the most revenue in 2026?` |
-| 2 | analyst | `What was our occupancy?` |
-| 3 | analyst | `Mountain Lodge, on 2026-03-12` |
-| 4 | analyst | `Show me the phone numbers of guests who gave a score of 1.` |
+| 2 | analyst | `And at Beach Resort?` |
+| 3 | analyst | `Show me the phone numbers of guests who gave a score of 1.` |
 
-Checked 2026-10-24 against this repo's code with the live model: inputs 1, 2 and 4 are eval cases q06, q49 and u02,
-which pass in all 3 dev runs. Input 3 (answering the clarifying question) is covered by a page test with the model
-replaced; I haven't typed it end to end. The daily check on 2026-09-14 prints the Suite rate error.
+Checked 2026-10-24 with the live model on a local run of this branch: input 1 is eval case q06 (passes 3/3); a
+follow-up of the same shape ("And at Mountain Lodge?" after a Beach Resort revenue question) answered for
+Mountain Lodge with "Understood as" shown; input 3 is eval case u02 (refused 3/3). The daily check on 2026-09-14
+shows the Suite rate error. Type all three on the live app once it's deployed, before recording.
 
 ## LinkedIn caption (one sentence)
 
-I built a text-to-SQL agent for a hotel's revenue manager that always shows its SQL, asks when a question is vague,
-refuses writes and personal data, and runs a daily anomaly check that caught all five planted problems.
+I built a text-to-SQL agent for a hotel's revenue manager that looks up the metric definitions before it writes
+SQL, shows its steps and sources, handles follow-ups, and refuses writes and personal data.
