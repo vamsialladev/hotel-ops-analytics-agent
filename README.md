@@ -14,9 +14,15 @@ chart and the SQL behind it. A daily check flags anything odd and posts it to Sl
 > Discovery and scoping (stage 0): [hotel-ai-discovery](https://github.com/vamsialladev/hotel-ai-discovery).
 
 <!-- DEMO-VIDEO -->
+<!-- AI-NARRATED-DEMO:START -->
+<a href="https://vamsialla.com/projects/hotel-ops-analytics-agent.html#demo"><img src="docs/video/demo-ai-voice.jpg" alt="Demo video, AI-narrated: a plain-English revenue question answered with its steps, the SQL guard's verdict, its sources and SQL, a follow-up for the other property, a request for guest phone numbers refused, and the daily anomaly check catching a mispriced suite" width="720"></a>
 
-**Try it live:** not deployed yet. It needs a Streamlit Community Cloud app with an API key in its secrets, which
-I add myself. It runs locally in two minutes: [Run locally](#run-locally).
+**Demo video (1:28, AI-narrated):** [watch it with sound on vamsialla.com](https://vamsialla.com/projects/hotel-ops-analytics-agent.html#demo) (GitHub can't play MP4 files from a repo) · [download the MP4](docs/video/demo-ai-voice.mp4) · captions burned in ([text](docs/video/demo-ai-voice.srt)). The narrator is an AI voice (Kokoro); my own-voice version will replace it.
+<!-- AI-NARRATED-DEMO:END -->
+
+**Try it live:** <https://hotel-ops-analytics-agent.streamlit.app> (free hosting: may take ~30 s to wake). Synthetic
+data, demo roles, no sign-in; capped at 20 questions a visit and $1.00 a day. It also runs locally in two minutes:
+[Run locally](#run-locally).
 
 ## At a glance
 

@@ -34,3 +34,18 @@ shows the Suite rate error. Type all three on the live app once it's deployed, b
 
 I built a text-to-SQL agent for a hotel's revenue manager that looks up the metric definitions before it writes
 SQL, shows its steps and sources, handles follow-ups, and refuses writes and personal data.
+
+## AI narration (used in docs/video/demo-ai-voice.mp4)
+
+Until I record my own voice, the demo video (1:28) is narrated by an AI voice (Kokoro `af_heart`, local) and labelled "AI-narrated" on screen and here. It was recorded from the live app with Playwright; the captions are the narration, timed to the voice. `/` marks a pause.
+
+| Step | Narration |
+|---|---|
+| intro | A revenue manager told me a custom question costs her half a day of pivot tables. / So I built this: she just asks. / It's a simulated hotel group, and all the data's made up. |
+| ask | Which room type at Mountain Lodge earned the most this year? / It writes one SQL query, / and before anything runs, a guard checks it. / Here's the guard's verdict: read-only, and only these tables. |
+| sources | And here's where the answer came from. / The tables it read, and the revenue definition the hotel agreed on. / It didn't guess what revenue means. It looked it up. / And the SQL's right there to check. |
+| followup | Now a follow-up. / And at Beach Resort? / It works out I mean the same question for the other property, / shows me how it read it, and answers. |
+| refuse | If I ask for guest phone numbers as an analyst, it says no, / and even if the model slipped, the guard would stop the query. |
+| anomalies | Every morning a check runs five rules with no model at all. / Here it caught a suite priced at fifty dollars instead of about five hundred. |
+| proof | On my test questions it gets ninety-nine percent right, / and every held-out one, / for about twenty-eight cents per thousand questions. |
+| live | It's live, with no sign-in. / The link's below, and so is the code. |

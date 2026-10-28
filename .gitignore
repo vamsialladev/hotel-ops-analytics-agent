@@ -9,6 +9,9 @@ __pycache__/
 .coverage
 coverage.xml
 .streamlit/secrets.toml
-docs/video/
+docs/video/*
+!docs/video/demo-ai-voice.mp4
+!docs/video/demo-ai-voice.jpg
+!docs/video/demo-ai-voice.srt
 logs/
 .claude/
