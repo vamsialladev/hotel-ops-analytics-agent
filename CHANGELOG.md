@@ -4,6 +4,12 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); versions follo
 [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 
+## [1.3.0] - 2026-10-26
+### Added
+- Hotel policy over MCP (`src/policy_mcp.py`, decision 13): a deterministic router, `search_policy` on the stage 7
+  server as the manager role with a client allowlist (search_policy only), passages cited, grounded and shown as
+  written. Eval split `policy` (5 questions).
+
 ## [1.2.0] - 2026-10-25
 ### Added
 - Shared guardrails, tracing and ops log from [hotel-ai-platform](https://github.com/vamsialladev/hotel-ai-platform)

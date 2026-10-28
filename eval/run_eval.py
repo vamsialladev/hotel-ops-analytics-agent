@@ -3,6 +3,7 @@ refused (writes, schema changes, personal data for a non-manager, injection in t
 
 python -m eval.run_eval --runs 3 --price-in 0.1 --price-out 0.5            # dev set, saves a report
 python -m eval.run_eval --split heldout --runs 3 --price-in 0.1 --price-out 0.5
+python -m eval.run_eval --split policy --runs 3 --price-in 0.1 --price-out 0.5   # data + hotel policy over MCP
 python -m eval.run_eval --guard-only                                      # free: every reference SQL passes the guard
 python -m eval.run_eval --retrieval                                       # free: retrieved docs cover reference tables
 
@@ -11,6 +12,7 @@ Every run calls the model (Claude Haiku 5.5) for each question; prices are flags
 
 import argparse
 import json
+import re
 import sys
 from datetime import date
 from pathlib import Path
@@ -31,13 +33,29 @@ def load(split: str) -> list[dict]:
     return [r for r in rows if split == "all" or r["split"] == split]
 
 
+def policy_ok(case: dict, cites: list[str], answer: str) -> bool:
+    """Policy cases: the right passage came back from the MCP server, and a data answer cites it and states the rule
+    (answer_must). A policy-only question is refused by the plan; the page then shows the passages as written."""
+    if not case.get("policy"):
+        return True
+    ok = any(re.search(case["policy"], c) for c in cites)
+    if case["expect"] == "sql":
+        # It cites a passage it was given, with or without the "Hotel policy: " prefix the agent adds to labels
+        # (changed after the first run, where 4 correct citations dropped the prefix).
+        cited = any(f"[{c}]" in answer or f"[{c.removeprefix('Hotel policy: ')}]" in answer for c in cites)
+        ok = ok and cited and all(re.search(x, answer, re.I) for x in case.get("answer_must", []))
+    return ok
+
+
 def grade(case: dict, res, con) -> bool:
+    cites = [p["cite_as"] for p in res.policy]
     if case["expect"] != "sql":
-        return res.action == case["expect"]
+        return res.action == case["expect"] and policy_ok(case, cites, res.answer)
     if res.action != "sql":
         return False
     _, expected = db.run(con, case["sql"])
-    return matches([list(r) for r in expected], res.rows, case.get("ordered", False), case["sql"])
+    rows_ok = matches([list(r) for r in expected], res.rows, case.get("ordered", False), case["sql"])
+    return rows_ok and policy_ok(case, cites, res.answer)
 
 
 def percentile(values, q):
@@ -124,6 +142,7 @@ def rescore(path: Path) -> int:
             ok = matches([list(x) for x in exp], [list(x) for x in got], case.get("ordered", False), case["sql"])
         else:
             ok = r["action"] == case["expect"]
+        ok = ok and policy_ok(case, r.get("policy", []), r.get("answer", ""))
         changed += ok != r["pass"]
         r["pass"] = ok
     per_id = {}
@@ -175,7 +194,7 @@ def guard_only() -> int:
 
 def main(argv=None) -> int:
     parser = argparse.ArgumentParser(description=__doc__.split("\n\n")[0])
-    parser.add_argument("--split", default="dev", choices=["dev", "heldout", "all"])
+    parser.add_argument("--split", default="dev", choices=["dev", "heldout", "policy", "all"])
     parser.add_argument("--runs", type=int, default=1)
     parser.add_argument("--price-in", type=float, default=None)
     parser.add_argument("--price-out", type=float, default=None)
@@ -211,6 +230,7 @@ def main(argv=None) -> int:
                     "understood_as": res.question if res.original else "",
                     "tables": res.tables,
                     "docs": res.docs,
+                    "policy": [p["cite_as"] for p in res.policy],
                     "answer": res.answer,
                     "message": res.message,
                     "rejected": res.rejected,

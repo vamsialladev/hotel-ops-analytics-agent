@@ -98,6 +98,11 @@ def show_turn(turn: dict, live: bool = False):
                     x, y, kind = turn["chart"].get("x"), turn["chart"].get("y"), turn["chart"].get("type")
                     if kind in ("bar", "line") and x in turn["columns"] and y in turn["columns"] and len(data) > 1:
                         (st.bar_chart if kind == "bar" else st.line_chart)(data, x=x, y=y)
+        if turn.get("policy"):  # from the stage 7 MCP server; quoted as written, never rewritten by the model
+            n = len(turn["policy"])
+            with st.expander(f"Hotel policy ({n} passage{'s' if n != 1 else ''}, via MCP)", expanded=action != "sql"):
+                for p in turn["policy"]:
+                    st.text(f"{p['cite_as']}\n{p['text']}")
         if turn.get("steps"):
             with st.expander(f"Steps ({len(turn['steps'])}) · {turn['seconds']:.1f} s · {turn['calls']} model call(s)"):
                 show_steps(turn["steps"])
@@ -116,6 +121,7 @@ def turn_from(res: agent.Result) -> dict:
         "chart": res.chart,
         "tables": res.tables,
         "docs": res.docs,
+        "policy": res.policy,
         "ungrounded": res.ungrounded,
         "steps": [vars(s) for s in res.steps],
         "seconds": res.seconds,

@@ -20,7 +20,7 @@ from src import limits
 from src.config import DAILY_COST_CAP_USD, LLM_MODEL, LOG_DIR, ROOT
 
 APP = "hotel-ops-analytics-agent"
-APP_VERSION = "1.2.0"
+APP_VERSION = "1.3.0"
 MONTHLY_COST_CAP_USD = float(os.getenv("MONTHLY_COST_CAP_USD", "10.00"))
 
 INPUT_POLICY = guardrails.InputPolicy(max_chars=1000, languages=("en", "es"))

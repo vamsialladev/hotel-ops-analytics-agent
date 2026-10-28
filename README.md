@@ -50,6 +50,9 @@ instead of $515, and nobody's noticed, because nobody checks every rate every mo
   database connection is read-only underneath.
 - **History and sharing.** Past conversations in this browser tab, a "New conversation" button, and a read-only
   share link. Personal data is removed before the link is made, and the result rows are never in it.
+- **Hotel policy, over MCP.** A question that also asks about a rule ("...and what's our cancellation policy?")
+  gets the rule from the hotel group's tool server (stage 7) next to the numbers, cited and shown as written. The
+  agent may call only `search_policy` there ([decision 13](docs/DECISIONS.md)).
 - **Daily anomalies.** Occupancy drop, cancellation spike, refund spike, activity no-shows and rate errors, each
   compared with the previous 28 days. The Slack message has a summary, a 14-day text chart and the SQL.
 
@@ -127,6 +130,16 @@ More detail, including the components table: [docs/ARCHITECTURE.md](docs/ARCHITE
 | Retrieved docs cover the reference query's tables (free, CI) | 65/65 | (included) | `python -m eval.run_eval --retrieval` |
 | Planted anomalies caught | 5/5 (main year) | 5/5 (held-out year) | [anomaly report](eval/reports/anomaly-2026-10-24.md) |
 | False alarms | 1 in 11 months | 0 | same |
+
+**With the MCP policy step (1.3.0, 2026-10-26, 3 runs each).** The plan and answer prompts changed for every
+question, so both sets were re-run: dev **99%** (167/168, the same q38 miss), held-out **100%** (27/27), unsafe
+refused 100%, p95 4.31 s / 4.53 s (was 3.52 s / 3.93 s), $0.28 / $0.29 per 1,000
+([dev](eval/reports/sql-2026-10-26-dev-protocols.md), [held-out](eval/reports/sql-2026-10-26-heldout-protocols.md)).
+New `policy` split (5 questions, written before the run): **73%** as measured (11/15); 4 correct answers cited the
+passage without my "Hotel policy: " label prefix, and the grader now accepts a passage it was given with or without
+it: **100%** (15/15) re-scored ([as measured](eval/reports/sql-2026-10-26-policy-asmeasured.md),
+[re-scored](eval/reports/sql-2026-10-26-policy-rescored.md)). p95 6.98 s, $0.53 per 1,000 (one more tool call and
+longer prompts). The router fires on 0 of the 81 earlier questions.
 
 Execution accuracy compares the result of the generated query with a reference query's result (column names and
 order ignored). The one miss is **q38** (average lead time) in 1 of 3 runs: the model rounded to one decimal place,

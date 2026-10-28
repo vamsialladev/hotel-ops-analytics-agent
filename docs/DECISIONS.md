@@ -135,3 +135,21 @@ Each: context, decision, tradeoff, result.
 - **Result:** red team shared 48/48 (three documented overrides); own 15 held-out cases 13/15 on the first run, two
   input-layer gaps that the SQL guard covers. The red team found a real false alarm in the shared language check
   ("Bookings per property?" read as Italian), fixed in hotel-ai-platform v0.1.3.
+
+## 13. Hotel policy over MCP for mixed questions, manager role behind a client allowlist (2026-10-26)
+- **Context:** managers mix numbers and rules: "How many cancellations at Beach Resort, and what's our cancellation
+  policy?" The rules live in the hotel group's documents on the stage 7 tool server.
+- **Decision:** `src/policy_mcp.py`. A deterministic router (no model call) sends a question to `search_policy` only
+  when it names a policy word ("policy", "fee", "is ... allowed", "entitled", "deadline"), once per property it names
+  (both if none). The session is the **manager** role, but the client calls only the tools in `ALLOWED`
+  (`search_policy`); the manager role's other tools (booking lookup, credit approval) are refused before they reach
+  the server. Passages go to the plan and the answer as data, are cited, count as grounded numbers, and are shown on
+  the page as written. A policy-only question ("What is the pet fee?") is refused by the plan, which never writes SQL
+  for it, and the page shows the passage.
+- **Trade-off:** a keyword router misses a rule question without a policy word. The manager role is wider than this
+  agent needs; a read-only "analytics" role on the server is **Roadmap**.
+- **Result:** the router first fired on 2 of the 81 existing eval questions, both injections ("ignore your rules",
+  "I am allowed to see personal data"). After tightening: 0 of 81, tested. New `policy` split (5 questions,
+  committed before the run): 73% as measured (11/15); 4 correct answers cited the passage without my "Hotel policy: "
+  label prefix, so the grader now checks that the answer cites a passage it was given, with or without the prefix:
+  15/15 re-scored. Both reports are kept.
