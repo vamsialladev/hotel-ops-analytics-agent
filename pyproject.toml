@@ -1,6 +1,6 @@
 [project]
 name = "hotel-ops-analytics-agent"
-version = "1.1.0"
+version = "1.2.0"
 description = "Stage 8: plain-English questions over the hotel group's bookings database, and a daily anomaly check"
 requires-python = ">=3.12"
 license = { text = "MIT" }

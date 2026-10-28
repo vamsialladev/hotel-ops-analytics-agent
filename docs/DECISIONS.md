@@ -124,3 +124,14 @@ Each: context, decision, tradeoff, result.
   Anthropic Console's monthly spend limit stays the backstop.
 - **Result:** unit and page tests cover each limit (the model is never called once a cap is hit), the redaction
   (a planted name, phone and email never reach the file) and a share link round trip.
+
+## 12. Shared guardrails, tracing from the agent's own steps, and an Admin page (2026-10-25)
+- **Context:** the final plan adds guardrails, a red team, tracing, one ops log and an Admin page to every live app.
+  The agent already timed every step (`_step`) for the Steps panel.
+- **Decision:** wire hotel-ai-platform (`src/ops.py`); `_step` also records each step as a span on the current trace,
+  marking a rejected query "blocked" and a failed one "error". Promise and citation wording checks are off: the agent
+  only reads and shows its SQL. An Admin page behind `ADMIN_PASSWORD`.
+- **Trade-off:** the model calls aren't separate spans from the plan step that contains them.
+- **Result:** red team shared 48/48 (three documented overrides); own 15 held-out cases 13/15 on the first run, two
+  input-layer gaps that the SQL guard covers. The red team found a real false alarm in the shared language check
+  ("Bookings per property?" read as Italian), fixed in hotel-ai-platform v0.1.3.

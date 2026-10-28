@@ -15,6 +15,7 @@ from dataclasses import dataclass, field
 
 import anthropic
 import sqlglot
+from hotelplatform import tracing
 from sqlglot import exp
 
 from src import db, retrieval, rewrite, sqlguard
@@ -151,7 +152,13 @@ def source_tables(sql: str) -> list[str]:
 
 
 def _step(result: Result, name: str, inp: dict, out: dict, start: float) -> None:
-    result.steps.append(Step(name, inp, out, round(time.perf_counter() - start, 3)))
+    seconds = round(time.perf_counter() - start, 3)
+    result.steps.append(Step(name, inp, out, seconds))
+    # The same step on the shared ops trace (hotel-ai-platform), when there is one (not in evals or tests). A rejected
+    # query is "blocked" and a failed one "error", so the Admin waterfall colours them.
+    if (trace := tracing.current()) is not None:
+        status = "blocked" if out.get("verdict") == "rejected" else "error" if "error" in out else "ok"
+        trace.record(name, seconds * 1000, status=status, input=inp, output=out)
 
 
 def plan_and_run(

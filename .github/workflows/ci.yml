@@ -30,8 +30,18 @@ jobs:
         run: python -m eval.run_anomaly_eval --gate
       - name: "Gate: the saved dev run re-scores to the same verdicts (no API)"
         run: python -m eval.run_eval --rescore eval/reports/sql-2026-10-24-dev-v1.1.jsonl
+      - name: "Red-team gate: shared corpus + this app's cases through the SQL guard and read-only database (free)"
+        run: python scripts/run_redteam.py
       - name: Dependency audit
         run: pip-audit -r requirements.txt
+      - name: SBOM (CycloneDX) of the installed runtime
+        run: |
+          pip install "cyclonedx-bom~=7.1"
+          cyclonedx-py environment --output-format JSON --output-file sbom.json
+      - uses: actions/upload-artifact@v7
+        with:
+          name: sbom
+          path: sbom.json
 
   links:
     name: Link check (lychee)
