@@ -52,6 +52,19 @@ def test_app_renders_all_tabs_and_links(at):
     assert any("synthetic" in c.value.lower() for c in at.sidebar.caption)
 
 
+def test_dollar_amounts_render_as_written(at, monkeypatch):
+    def dollar_stream(res, client=None):
+        res.answer = "Cabin earned $768,880. Lodge Queen was second at $647,773."
+        yield res.answer
+
+    monkeypatch.setattr(agent, "stream_answer", dollar_stream)
+    at.run()
+    assert any("\\$50" in w.value and "\\$515" in w.value for w in at.warning)  # the anomaly alert on the default day
+    at.chat_input[0].set_value("Which room type earned the most?").run()
+    assert not at.exception
+    assert any("\\$768,880" in m.value and "\\$647,773" in m.value for m in at.markdown)
+
+
 def test_a_question_shows_answer_sources_steps_and_suggestions(at):
     at.run()
     at.chat_input[0].set_value("Bookings per property?").run()
