@@ -1,0 +1,101 @@
+1
+00:00:03,000 --> 00:00:08,013
+A revenue manager told me a custom question costs her half a day of
+pivot tables.
+
+2
+00:00:08,863 --> 00:00:10,890
+So I built this: she just asks.
+
+3
+00:00:11,740 --> 00:00:15,132
+It's a simulated hotel group, and all the data's made up.
+
+4
+00:00:15,750 --> 00:00:18,971
+Which room type at Mountain Lodge earned the most this year?
+
+5
+00:00:19,821 --> 00:00:21,741
+It writes one SQL query,
+
+6
+00:00:22,591 --> 00:00:25,151
+and before anything runs, a guard checks it.
+
+7
+00:00:26,001 --> 00:00:29,713
+Here's the guard's verdict: read-only, and only these tables.
+
+8
+00:00:30,328 --> 00:00:32,269
+And here's where the answer came from.
+
+9
+00:00:33,119 --> 00:00:37,151
+The tables it read, and the revenue definition the hotel agreed on.
+
+10
+00:00:38,001 --> 00:00:39,879
+It didn't guess what revenue means.
+
+11
+00:00:40,729 --> 00:00:41,753
+It looked it up.
+
+12
+00:00:42,603 --> 00:00:44,651
+And the SQL's right there to check.
+
+13
+00:00:45,266 --> 00:00:46,354
+Now a follow-up.
+
+14
+00:00:47,204 --> 00:00:48,548
+And at Beach Resort?
+
+15
+00:00:49,398 --> 00:00:52,598
+It works out I mean the same question for the other property,
+
+16
+00:00:53,448 --> 00:00:55,603
+shows me how it read it, and answers.
+
+17
+00:00:56,219 --> 00:00:59,846
+If I ask for guest phone numbers as an analyst, it says no,
+
+18
+00:01:00,696 --> 00:01:04,109
+and even if the model slipped, the guard would stop the query.
+
+19
+00:01:04,719 --> 00:01:08,218
+Every morning a check runs five rules with no model at all.
+
+20
+00:01:09,068 --> 00:01:13,313
+Here it caught a suite priced at fifty dollars instead of about five
+hundred.
+
+21
+00:01:13,922 --> 00:01:17,271
+On my test questions it gets ninety-nine percent right,
+
+22
+00:01:18,121 --> 00:01:19,593
+and every held-out one,
+
+23
+00:01:20,443 --> 00:01:23,046
+for about twenty-eight cents per thousand questions.
+
+24
+00:01:23,641 --> 00:01:25,390
+It's live, with no sign-in.
+
+25
+00:01:26,240 --> 00:01:28,246
+The link's below, and so is the code.
